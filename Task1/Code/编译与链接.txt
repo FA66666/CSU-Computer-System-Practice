@@ -1,0 +1,2 @@
+ml /c /Zd /coff Calculator.asm
+link /subsystem:console Calculator.obj
