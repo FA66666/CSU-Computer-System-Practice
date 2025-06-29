@@ -1,4 +1,3 @@
-
 ; ========== MASM 汇编四则运算计算器 ===========
 ; 主程序文件 Calculator.asm
 ; 功能：支持表达式计算、历史记录、历史组合、分页浏览等
@@ -10,35 +9,35 @@
 option casemap:none
 
 ; ====== 包含头文件和库 ======
-include \masm32\include\windows.inc
-include \masm32\include\kernel32.inc
-include \masm32\include\masm32.inc
-include \masm32\include\msvcrt.inc
-includelib \masm32\lib\kernel32.lib
-includelib \masm32\lib\masm32.lib
-includelib \masm32\lib\msvcrt.lib
+include F:\masm32\include\windows.inc
+include F:\masm32\include\kernel32.inc
+include F:\masm32\include\masm32.inc
+include F:\masm32\include\msvcrt.inc
+includelib F:\masm32\lib\kernel32.lib
+includelib F:\masm32\lib\masm32.lib
+includelib F:\masm32\lib\msvcrt.lib
 
 _getch PROTO C ; 控制台等待按键
 
 ; ====== 记号类型常量定义 ======
-TOKEN_TYPE_UNKNOWN      equ 0      ; 未知
-TOKEN_TYPE_NUMBER       equ 1      ; 数字
-TOKEN_TYPE_PLUS         equ 2      ; 加号
-TOKEN_TYPE_MINUS        equ 3      ; 减号
-TOKEN_TYPE_MULTIPLY     equ 4      ; 乘号
-TOKEN_TYPE_DIVIDE       equ 5      ; 除号
-TOKEN_TYPE_LPAREN       equ 6      ; 左括号
-TOKEN_TYPE_RPAREN       equ 7      ; 右括号
-TOKEN_TYPE_END          equ 8      ; 结束
-TOKEN_TYPE_ERROR        equ 9      ; 错误
-TOKEN_TYPE_UNARY_MINUS  equ 10     ; 一元负号
+TOKEN_TYPE_UNKNOWN 	equ 0 	; 未知
+TOKEN_TYPE_NUMBER 	equ 1 	; 数字
+TOKEN_TYPE_PLUS 	equ 2 	; 加号
+TOKEN_TYPE_MINUS 	equ 3 	; 减号
+TOKEN_TYPE_MULTIPLY 	equ 4 	; 乘号
+TOKEN_TYPE_DIVIDE 	equ 5 	; 除号
+TOKEN_TYPE_LPAREN 	equ 6 	; 左括号
+TOKEN_TYPE_RPAREN 	equ 7 	; 右括号
+TOKEN_TYPE_END 	equ 8 	; 结束
+TOKEN_TYPE_ERROR 	equ 9 	; 错误
+TOKEN_TYPE_UNARY_MINUS 	equ 10 	; 一元负号
 
-PAGE_SIZE               equ 10     ; 每页显示10条历史记录
+PAGE_SIZE 	equ 10 	; 每页显示10条历史记录
 
 ; ====== 输出队列结构体（逆波兰表达式用） ======
 OutputToken STRUCT
-    tokenType   DWORD   ?   ; 记号类型
-    tokenValue  REAL8   ?   ; 数值
+	tokenType 	DWORD 	? 	; 记号类型
+	tokenValue 	REAL8 	? 	; 数值
 OutputToken ENDS
 
 
@@ -93,8 +92,8 @@ OutputToken ENDS
     hConsoleInput    dd              ?
     dwCharsRead      dd              ?
     pCurrentChar     dd              ?
-                     currentTokenVal REAL8           ?
-                     outputQueue     OutputToken     64 dup(<>)
+                     currentTokenVal REAL8 	?
+                     outputQueue     OutputToken 	64 dup(<>)
     outputQueueSize  dd              ?
     operatorStack    dd              64 dup(?)
     opStackTop       dd              ?
@@ -111,7 +110,12 @@ OutputToken ENDS
 
     ; ========== 主程序入口 ===========
 main proc
-    ; 获取标准输出和输入句柄
+    ; process main_loop:
+    ;   clear_screen()
+    ;   display_menu()
+    ;   choice = read_input()
+    ;   jump to corresponding function based on choice
+    ;   repeat loop
                               invoke GetStdHandle, STD_OUTPUT_HANDLE
                               mov    hConsoleOutput, eax
                               invoke GetStdHandle, STD_INPUT_HANDLE
@@ -168,7 +172,7 @@ main endp
 
     ; ========== 保存表达式到历史文件 ===========
     ; 输入：szExprBuffer
-    ; 追加写入到 history.txt
+    ; 过程：打开history.txt，移动到文件末尾，写入表达式，并追加换行符
 SaveExpressionToFile proc uses edi
                               LOCAL  hFile:HANDLE
                               LOCAL  dwBytesWritten:DWORD
@@ -197,7 +201,7 @@ SaveExpressionToFile endp
 
     ; ========== 获取历史文件指定行内容 ===========
     ; nLine: 行号（1开始），pBuf: 输出缓冲
-    ; 成功返回eax=1，失败返回eax=0
+    ; 过程：逐行读取文件，直到找到目标行号，复制内容到缓冲区，并移除末尾的换行符
 GetHistoryLine proc uses edi, nLine:DWORD, pBuf:PTR BYTE
                               LOCAL  pFile:DWORD
                               LOCAL  lineCounter:DWORD
@@ -245,7 +249,12 @@ GetHistoryLine endp
 
 
     ; ========== 历史组合运算 ===========
-    ; 选择两条历史，将其组合为 (A) * (B) 并计算
+    ; 过程：
+    ; 1. 显示所有历史记录
+    ; 2. 提示用户输入两个行号 (n1, n2)
+    ; 3. 获取第n1行和第n2行的表达式 (expr1, expr2)
+    ; 4. 构造新表达式 "(expr1) * (expr2)"
+    ; 5. 调用计算函数执行计算
 DoHistoryCalculation proc
                               LOCAL  selNum1:DWORD
                               LOCAL  selNum2:DWORD
@@ -310,7 +319,13 @@ DoViewHistory_DisplayOnly endp
 
 
     ; ========== 分页显示历史记录 ===========
-    ; 支持上下翻页，按E退出
+    ; 过程：
+    ; 1. 统计历史文件总行数 total_lines
+    ; 2. 计算总页数 total_pages = ceil(total_lines / PAGE_SIZE)
+    ; 3. [PagingLoop]
+    ; 4. 根据 current_page 计算要跳过的行数，并显示当前页的记录
+    ; 5. 显示分页信息和操作提示，等待用户按键
+    ; 6. 'n' -> 下一页, 'p' -> 上一页, 'e' -> 退出
 DoViewHistory proc uses ebx esi edi
                               LOCAL  pFile:DWORD
                               LOCAL  totalLines:DWORD
@@ -445,7 +460,7 @@ DoClearHistory endp
 
 
     ; ========== 获取运算符优先级 ===========
-    ; 返回：eax=优先级（1/2/3）
+    ; 返回：eax=优先级（1 for +-, 2 for */, 3 for unary -）
 GetPrecedence proc
                               cmp    eax, TOKEN_TYPE_UNARY_MINUS
                               je     PrecedenceIs3
@@ -499,6 +514,8 @@ PerformCalculation proc uses ebx esi edi
                               LOCAL  pResultStr:DWORD
                               LOCAL  pOperatorStr:DWORD
 
+    ; 算法1: Shunting-Yard (中缀转后缀/RPN)
+    ; 过程: 遍历记号流, 用一个操作符栈来处理优先级, 生成一个逆波兰表达式(RPN)队列
                               mov    pCurrentChar, offset szExprBuffer
                               mov    outputQueueSize, 0
                               mov    opStackTop, 0
@@ -520,6 +537,7 @@ PerformCalculation proc uses ebx esi edi
                               cmp    ebx, TOKEN_TYPE_ERROR
                               je     HandleEnd
     HandleOperator:           
+    ; if token is operator, pop higher/equal precedence operators from stack to queue
                               mov    eax, ebx
                               call   GetPrecedence
                               mov    currentPrec, eax
@@ -550,12 +568,14 @@ PerformCalculation proc uses ebx esi edi
                               mov    outputQueueSize, ecx
                               jmp    CheckStackTop
     EndCheckStackTop:         
+    ; push current operator to stack
                               mov    ecx, opStackTop
                               mov    operatorStack[ecx*4], ebx
                               inc    ecx
                               mov    opStackTop, ecx
                               jmp    ShuntingYardLoop
     HandleNumber:             
+    ; if token is number, add it to output queue
                               mov    ecx, outputQueueSize
                               mov    eax, ecx
                               imul   eax, SIZEOF OutputToken
@@ -567,12 +587,14 @@ PerformCalculation proc uses ebx esi edi
                               mov    outputQueueSize, ecx
                               jmp    ShuntingYardLoop
     HandleLParen:             
+    ; if token is '(', push it to operator stack
                               mov    ecx, opStackTop
                               mov    operatorStack[ecx*4], ebx
                               inc    ecx
                               mov    opStackTop, ecx
                               jmp    ShuntingYardLoop
     HandleRParen:             
+    ; if token is ')', pop operators from stack to queue until '(' is found
     PopUntilLParen:           
                               cmp    opStackTop, 0
                               je     ShuntingYardLoop
@@ -591,6 +613,7 @@ PerformCalculation proc uses ebx esi edi
                               mov    outputQueueSize, ecx
                               jmp    PopUntilLParen
     HandleEnd:                
+    ; after all tokens, pop remaining operators from stack to queue
     PopAllOperators_Loop:     
                               cmp    opStackTop, 0
                               je     EndPopAllOperators
@@ -607,6 +630,10 @@ PerformCalculation proc uses ebx esi edi
                               mov    outputQueueSize, ecx
                               jmp    PopAllOperators_Loop
     EndPopAllOperators:       
+
+    ; 算法2: RPN (逆波兰表达式)求值
+    ; 过程: 遍历RPN队列, 遇数字则压入操作数栈, 遇操作符则弹出操作数计算, 结果再压入栈。
+    ; 同时, 使用一个字符串栈来记录每一步的计算过程并打印。
                               invoke StdOut, addr szStepHeader
                               mov    rpnStepStackTop, 0
                               mov    pStringPool, offset stringPool
@@ -615,7 +642,7 @@ PerformCalculation proc uses ebx esi edi
     EvaluateRpnLoop:          
                               cmp    ecx, outputQueueSize
                               jge    EndEvaluateRpnLoop
-                              
+	
                               push   ecx
 
                               mov    esi, ecx
@@ -630,6 +657,7 @@ PerformCalculation proc uses ebx esi edi
                               jmp    EvalBinaryOp
 
     EvalNumber:               
+    ; RPN_eval: if token is number, push to value stack and string stack
                               fld    [esi].OutputToken.tokenValue
                               mov    edi, pStringPool
                               invoke crt_sprintf, edi, addr szFloatFmt, [esi].OutputToken.tokenValue
@@ -644,6 +672,7 @@ PerformCalculation proc uses ebx esi edi
                               jmp    NextRpnTokenInEval
 
     EvalUnaryMinus:           
+    ; RPN_eval: if unary minus, pop 1 operand, calculate, push result
                               fstp   op1
                               mov    ebx, rpnStepStackTop
                               dec    ebx
@@ -659,7 +688,7 @@ PerformCalculation proc uses ebx esi edi
                               invoke crt_sprintf, edi, addr szFloatFmt, tempResult
                               mov    pResultStr, edi
                               invoke crt_printf, addr szStepUnaryFmt, pOp1Str, pResultStr
-                              
+	
                               fld    tempResult
                               mov    ebx, rpnStepStackTop
                               mov    rpnStepStack[ebx*4], edi
@@ -672,6 +701,7 @@ PerformCalculation proc uses ebx esi edi
                               jmp    NextRpnTokenInEval
 
     EvalBinaryOp:             
+    ; RPN_eval: if binary operator, pop 2 operands, calculate, push result
                               fstp   op2
                               fstp   op1
                               mov    ebx, rpnStepStackTop
@@ -682,10 +712,10 @@ PerformCalculation proc uses ebx esi edi
                               mov    eax, rpnStepStack[ebx*4]
                               mov    pOp1Str, eax
                               mov    rpnStepStackTop, ebx
-                              
+	
                               fld    op1
                               fld    op2
-                              
+	
                               mov    eax, [esi].OutputToken.tokenType
                               cmp    eax, TOKEN_TYPE_PLUS
                               je     do_add
@@ -693,30 +723,33 @@ PerformCalculation proc uses ebx esi edi
                               je     do_sub
                               cmp    eax, TOKEN_TYPE_MULTIPLY
                               je     do_mul
-                              
+	
                               mov    pOperatorStr, offset szOpDivide
                               fdivp  st(1), st(0)
                               jmp    calc_done
 
-    do_add:                   mov    pOperatorStr, offset szOpPlus
+    do_add:                   
+                              mov    pOperatorStr, offset szOpPlus
                               faddp  st(1), st(0)
                               jmp    calc_done
-    do_sub:                   mov    pOperatorStr, offset szOpMinus
+    do_sub:                   
+                              mov    pOperatorStr, offset szOpMinus
                               fsubp  st(1), st(0)
                               jmp    calc_done
-    do_mul:                   mov    pOperatorStr, offset szOpMultiply
+    do_mul:                   
+                              mov    pOperatorStr, offset szOpMultiply
                               fmulp  st(1), st(0)
                               jmp    calc_done
 
     calc_done:                
                               fstp   tempResult
-                              
+	
                               mov    edi, pStringPool
                               invoke crt_sprintf, edi, addr szFloatFmt, tempResult
                               mov    pResultStr, edi
-                              
+	
                               invoke crt_printf, addr szStepFmt, pOp1Str, pOperatorStr, pOp2Str, pResultStr
-                              
+	
                               fld    tempResult
                               mov    ebx, rpnStepStackTop
                               mov    rpnStepStack[ebx*4], edi
@@ -727,7 +760,7 @@ PerformCalculation proc uses ebx esi edi
                               inc    edi
                               mov    pStringPool, edi
                               jmp    NextRpnTokenInEval
-                              
+	
     NextRpnTokenInEval:       
                               pop    ecx
                               inc    ecx
@@ -741,6 +774,15 @@ PerformCalculation endp
 
 
 GetNextToken proc
+    ; 过程:
+    ; 1. 跳过所有前导空白字符
+    ; 2. 检查当前字符：
+    ;   - 如果是数字或小数点，解析整个浮点数
+    ;   - 如果是'-'，检查前一个记号类型以判断是'一元负号'还是'减号'
+    ;   - 如果是其他操作符，返回对应类型
+    ;   - 如果是文件末尾(0), 返回END
+    ;   - 否则返回ERROR
+    ; 3. 更新 pCurrentChar 指针指向下一个未处理字符
                               mov    esi, pCurrentChar
     SkipWhitespace:           
                               mov    al, byte ptr [esi]
@@ -808,6 +850,7 @@ GetNextToken proc
                               mov    eax, TOKEN_TYPE_PLUS
                               ret
     TokenIsMinus:             
+    ; Differentiate unary minus from binary subtraction
                               mov    eax, g_prevTokenType
                               cmp    eax, TOKEN_TYPE_NUMBER
                               je     ReturnBinaryMinus
