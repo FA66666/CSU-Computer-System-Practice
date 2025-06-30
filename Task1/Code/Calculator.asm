@@ -110,12 +110,12 @@ OutputToken ENDS
 
     ; ========== 主程序入口 ===========
 main proc
-    ; process main_loop:
-    ;   clear_screen()
-    ;   display_menu()
-    ;   choice = read_input()
-    ;   jump to corresponding function based on choice
-    ;   repeat loop
+    ; 主循环流程:
+    ;   清屏()
+    ;   显示菜单()
+    ;   choice = 读取输入()
+    ;   根据选项跳转到对应函数
+    ;   重复循环
                               invoke GetStdHandle, STD_OUTPUT_HANDLE
                               mov    hConsoleOutput, eax
                               invoke GetStdHandle, STD_INPUT_HANDLE
@@ -322,7 +322,7 @@ DoViewHistory_DisplayOnly endp
     ; 过程：
     ; 1. 统计历史文件总行数 total_lines
     ; 2. 计算总页数 total_pages = ceil(total_lines / PAGE_SIZE)
-    ; 3. [PagingLoop]
+    ; 3. 进入分页循环 [PagingLoop]
     ; 4. 根据 current_page 计算要跳过的行数，并显示当前页的记录
     ; 5. 显示分页信息和操作提示，等待用户按键
     ; 6. 'n' -> 下一页, 'p' -> 上一页, 'e' -> 退出
@@ -460,7 +460,7 @@ DoClearHistory endp
 
 
     ; ========== 获取运算符优先级 ===========
-    ; 返回：eax=优先级（1 for +-, 2 for */, 3 for unary -）
+    ; 返回：eax=优先级（1 代表 +-, 2 代表 */, 3 代表一元负号）
 GetPrecedence proc
                               cmp    eax, TOKEN_TYPE_UNARY_MINUS
                               je     PrecedenceIs3
@@ -514,8 +514,8 @@ PerformCalculation proc uses ebx esi edi
                               LOCAL  pResultStr:DWORD
                               LOCAL  pOperatorStr:DWORD
 
-    ; 算法1: Shunting-Yard (中缀转后缀/RPN)
-    ; 过程: 遍历记号流, 用一个操作符栈来处理优先级, 生成一个逆波兰表达式(RPN)队列
+    ; 算法1: Shunting-Yard 调度场算法 (中缀表达式转后缀/逆波兰表达式)
+    ; 过程: 遍历记号流，使用一个操作符栈来处理优先级，生成一个逆波兰表达式(RPN)队列
                               mov    pCurrentChar, offset szExprBuffer
                               mov    outputQueueSize, 0
                               mov    opStackTop, 0
@@ -536,8 +536,9 @@ PerformCalculation proc uses ebx esi edi
                               je     HandleRParen
                               cmp    ebx, TOKEN_TYPE_ERROR
                               je     HandleEnd
+    ; 处理操作符:
     HandleOperator:           
-    ; if token is operator, pop higher/equal precedence operators from stack to queue
+    ; 如果记号是操作符，则从栈中弹出优先级更高或相等的旧操作符到输出队列
                               mov    eax, ebx
                               call   GetPrecedence
                               mov    currentPrec, eax
@@ -568,14 +569,15 @@ PerformCalculation proc uses ebx esi edi
                               mov    outputQueueSize, ecx
                               jmp    CheckStackTop
     EndCheckStackTop:         
-    ; push current operator to stack
+    ; 将当前操作符压入栈
                               mov    ecx, opStackTop
                               mov    operatorStack[ecx*4], ebx
                               inc    ecx
                               mov    opStackTop, ecx
                               jmp    ShuntingYardLoop
+    ; 处理数字:
     HandleNumber:             
-    ; if token is number, add it to output queue
+    ; 如果记号是数字，则将其添加到输出队列
                               mov    ecx, outputQueueSize
                               mov    eax, ecx
                               imul   eax, SIZEOF OutputToken
@@ -586,15 +588,17 @@ PerformCalculation proc uses ebx esi edi
                               inc    ecx
                               mov    outputQueueSize, ecx
                               jmp    ShuntingYardLoop
+    ; 处理左括号:
     HandleLParen:             
-    ; if token is '(', push it to operator stack
+    ; 如果记号是'('，则将其压入操作符栈
                               mov    ecx, opStackTop
                               mov    operatorStack[ecx*4], ebx
                               inc    ecx
                               mov    opStackTop, ecx
                               jmp    ShuntingYardLoop
+    ; 处理右括号:
     HandleRParen:             
-    ; if token is ')', pop operators from stack to queue until '(' is found
+    ; 如果记号是')'，则从栈中弹出操作符到队列，直到遇到'('
     PopUntilLParen:           
                               cmp    opStackTop, 0
                               je     ShuntingYardLoop
@@ -612,8 +616,9 @@ PerformCalculation proc uses ebx esi edi
                               inc    ecx
                               mov    outputQueueSize, ecx
                               jmp    PopUntilLParen
+    ; 处理表达式结束:
     HandleEnd:                
-    ; after all tokens, pop remaining operators from stack to queue
+    ; 处理完所有记号后，将栈中剩余的操作符全部弹出到队列
     PopAllOperators_Loop:     
                               cmp    opStackTop, 0
                               je     EndPopAllOperators
@@ -632,8 +637,8 @@ PerformCalculation proc uses ebx esi edi
     EndPopAllOperators:       
 
     ; 算法2: RPN (逆波兰表达式)求值
-    ; 过程: 遍历RPN队列, 遇数字则压入操作数栈, 遇操作符则弹出操作数计算, 结果再压入栈。
-    ; 同时, 使用一个字符串栈来记录每一步的计算过程并打印。
+    ; 过程: 遍历RPN队列，遇到数字则压入操作数栈，遇到操作符则弹出操作数进行计算，结果再压回栈中。
+    ; 同时，使用一个字符串栈来记录每一步的计算过程并打印。
                               invoke StdOut, addr szStepHeader
                               mov    rpnStepStackTop, 0
                               mov    pStringPool, offset stringPool
@@ -656,8 +661,9 @@ PerformCalculation proc uses ebx esi edi
                               je     EvalUnaryMinus
                               jmp    EvalBinaryOp
 
+    ; 求值：数字
     EvalNumber:               
-    ; RPN_eval: if token is number, push to value stack and string stack
+    ; RPN求值：如果记号是数字，则将其压入数值栈和字符串栈
                               fld    [esi].OutputToken.tokenValue
                               mov    edi, pStringPool
                               invoke crt_sprintf, edi, addr szFloatFmt, [esi].OutputToken.tokenValue
@@ -671,8 +677,9 @@ PerformCalculation proc uses ebx esi edi
                               mov    pStringPool, edi
                               jmp    NextRpnTokenInEval
 
+    ; 求值：一元负号
     EvalUnaryMinus:           
-    ; RPN_eval: if unary minus, pop 1 operand, calculate, push result
+    ; RPN求值：如果是一元负号，弹出一个操作数，计算后将结果压栈
                               fstp   op1
                               mov    ebx, rpnStepStackTop
                               dec    ebx
@@ -700,8 +707,9 @@ PerformCalculation proc uses ebx esi edi
                               mov    pStringPool, edi
                               jmp    NextRpnTokenInEval
 
+    ; 求值：二元操作符
     EvalBinaryOp:             
-    ; RPN_eval: if binary operator, pop 2 operands, calculate, push result
+    ; RPN求值：如果是二元操作符，弹出两个操作数，计算后将结果压栈
                               fstp   op2
                               fstp   op1
                               mov    ebx, rpnStepStackTop
@@ -850,7 +858,7 @@ GetNextToken proc
                               mov    eax, TOKEN_TYPE_PLUS
                               ret
     TokenIsMinus:             
-    ; Differentiate unary minus from binary subtraction
+    ; 区分一元负号和二元减号
                               mov    eax, g_prevTokenType
                               cmp    eax, TOKEN_TYPE_NUMBER
                               je     ReturnBinaryMinus
