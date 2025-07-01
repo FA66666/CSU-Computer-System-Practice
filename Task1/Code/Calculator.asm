@@ -8,7 +8,6 @@
 .model flat, stdcall
 option casemap:none
 
-; ====== 包含头文件和库 ======
 include F:\masm32\include\windows.inc
 include F:\masm32\include\kernel32.inc
 include F:\masm32\include\masm32.inc
